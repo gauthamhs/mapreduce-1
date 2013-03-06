@@ -11,17 +11,13 @@ public class OutputData<K, V> {
 		this.values = new ArrayList<V>();
 	}
 	
-	void set(K key, V value){
+	void setKeyValue(K key, V value){
 		this.keys.add(key);
 		this.values.add(value);
 	}
 	
-	String data_string(int index){
-		return keys.get(index).toString() + ", " + values.get(index).toString();
-	}
-	
-	void reduce_show(){
-		for(int i = 0; i < keys.size(); i ++){
+	void reduceShow(){
+		for(int i = 0; i < keys.size(); i++){
 			System.out.println(keys.get(i).toString() + ", " + values.get(i).toString());
 		}
 	}

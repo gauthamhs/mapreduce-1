@@ -4,9 +4,9 @@ public class GroupedKeyValue<K, V> {
 	K key;
 	GroupedValues<V> gValues;
 
-/*
- * Constructor
- */
+	/*
+	 * constructor
+	 */
 	GroupedKeyValue(K key){
 		this.key = key;
 		this.gValues = new GroupedValues<V>();
@@ -18,15 +18,15 @@ public class GroupedKeyValue<K, V> {
 	}
 	
 	/*
-	 * ÉfÅ[É^ëÄçÏånMethod
+	 * methods for moving data
 	 */
 	
 	void setKey(K key){
 		this.key = key;
 	}
 	
-	void setValue(V value){
-		this.gValues.set(value);
+	void addValue(V value){
+		this.gValues.add(value);
 	}
 	
 	void setValues(GroupedValues<V> gValues){
@@ -38,7 +38,14 @@ public class GroupedKeyValue<K, V> {
 	}
 	
 	V getValue(){
-		return this.gValues.get();
+		V value = null;
+		if(this.gValues.hasValue())
+			value = this.gValues.get();
+		else{
+			System.err.println("gValues has no values.");
+			System.exit(0);
+		}
+		return value;
 	}
 	
 	GroupedValues<V> getValues(){

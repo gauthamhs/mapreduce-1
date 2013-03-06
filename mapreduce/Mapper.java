@@ -2,6 +2,9 @@ package mapreduce;
 
 import java.util.*;
 
+/*
+ * if
+ */
 public abstract class Mapper <InputKey, InputValue, OutputKey, OutputValue>{
 	protected InputKey ikey;
 	protected InputValue ivalue;

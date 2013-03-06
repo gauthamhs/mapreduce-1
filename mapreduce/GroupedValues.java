@@ -17,9 +17,13 @@ public class GroupedValues<V> implements Iterable<V> , Iterator<V> {
 		this.index = 0;
 	}
 	
-	void set(V v){
+	void add(V v){
 		gValues.add(v);
 		index++;
+	}
+	
+	boolean hasValue(){
+		return index <= 0 ? false : true;
 	}
 	
 	V get(){
@@ -36,7 +40,7 @@ public class GroupedValues<V> implements Iterable<V> , Iterator<V> {
 	@Override
 	public boolean hasNext() {
 		// TODO Auto-generated method stub
-		return index != 0;
+		return index > 0;
 	}
 
 	@Override

@@ -3,13 +3,10 @@ package mapreduce;
 import java.util.*;
 
 public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Comparable<IntermediateKey >, IntermediateValue, OutputReduceKey, OutputReduceValue>{
-
 	
 	Class<? extends Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> mapClass;
 	Class<? extends Reducer< IntermediateKey, IntermediateValue, OutputReduceKey, OutputReduceValue>> reduceClass;
 	
-//	Mapper<Key, Value> mapper;
-//	Reducer<Key, Value> reducer;
 	InputData<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue> inputData;
 	OutputData<OutputReduceKey, OutputReduceValue> outputData;
 	
@@ -38,6 +35,10 @@ public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Compa
 		this.outputData = new OutputData<OutputReduceKey, OutputReduceValue>();
 		this.phaseMR = phase_mp;
 		this.resultOutput = true;
+	}
+	
+	public void setResultOutput(boolean resultOutput){
+		this.resultOutput = resultOutput;
 	}
 	
 	
@@ -93,7 +94,8 @@ public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Compa
 	}
 	
 	void startShuffle(){
-		this.inputData.qSort(0, this.inputData.getShuffleSize()-1);
+//		this.inputData.qSort(0, this.inputData.getShuffleSize()-1);
+		this.inputData.cSort();
 		this.inputData.grouping();
 	}
 	
@@ -110,7 +112,7 @@ public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Compa
 			
 			local_reduce.setKeyValue(this.inputData.getReduceKey(i), this.inputData.getReduceValues(i));
 			local_reduce.reduce();
-			this.outputData.set(local_reduce.getKey(), local_reduce.getValue());
+			this.outputData.setKeyValue(local_reduce.getKey(), local_reduce.getValue());
 		}
 		//ƒƒ‚ƒŠ—Ìˆæ‰ð•ú
 		inputData = null;
@@ -123,15 +125,17 @@ public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Compa
 				inputData.showMap();
 			return;
 		}
+
 		startShuffle();
 		if(this.phaseMR.equals("MAP_SHUFFLE")){
 			if(this.resultOutput)
 				inputData.showSuffle();
 			return;
 		}
+		System.out.println("Reduce Phase is finished.");
 		startReduce();
 		if(this.resultOutput)
-			outputData.reduce_show();
+			outputData.reduceShow();
 	}
 	
 	
