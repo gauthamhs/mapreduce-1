@@ -1,6 +1,7 @@
 package mapreduce;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Comparable<IntermediateKey >, IntermediateValue, OutputReduceKey, OutputReduceValue>{
 	
@@ -22,10 +23,13 @@ public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Compa
 	
 	/*
 	 * result_outputはフェーズごとの結果の出力のon/offについて定義する
-	 * 
-	 * 
 	 */
 	boolean resultOutput;
+	
+	
+	//並列数
+	int paralelThreadNum;
+	
 
 	
 	public MapReduce(Class<? extends Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> map_class, Class<? extends  Reducer< IntermediateKey, IntermediateValue, OutputReduceKey, OutputReduceValue>> reduce_class, String phase_mp){
@@ -35,10 +39,15 @@ public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Compa
 		this.outputData = new OutputData<OutputReduceKey, OutputReduceValue>();
 		this.phaseMR = phase_mp;
 		this.resultOutput = true;
+		this.paralelThreadNum = 1;
 	}
 	
 	public void setResultOutput(boolean resultOutput){
 		this.resultOutput = resultOutput;
+	}
+	
+	public void setParallelThreadNum(int num){
+		this.paralelThreadNum = num;
 	}
 	
 	
@@ -59,34 +68,37 @@ public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Compa
 	 * 
 	 */
 	void startMap(){
-		Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue> local_map;
-		ArrayList<IntermediateKey> okeys;
-		ArrayList<IntermediateValue> ovalues;
-		
-		for(int i = 0; i < this.inputData.getMapSize(); i ++){
-			try{
-				local_map = mapClass.newInstance();
-			}catch (InstantiationException e) {
-				throw new RuntimeException(e);
-			} catch (IllegalAccessException e) {
-				throw new RuntimeException(e);
-			}
+			Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue> local_map;
+			ArrayList<IntermediateKey> okeys;
+			ArrayList<IntermediateValue> ovalues;
+			Executor executor = Executors.newFixedThreadPool(this.paralelThreadNum);
 			
-			local_map.setKeyValue(this.inputData.getMapKey(i), this.inputData.getMapValue(i));
-			
-			local_map.map();
-
-			//Map関数の出力を入れる
-			okeys = local_map.getKeys();
-			ovalues = local_map.getValues();
-			for(int j = 0; j < okeys.size(); j++){
-				this.inputData.setMap(okeys.get(j), ovalues.get(j));
-			}
-			
-			//メモリ領域の解放
-			okeys = null ;
-			ovalues = null;
-			local_map = null;
+			for(int i = 0; i < this.inputData.getMapSize(); i ++){
+				try{
+					local_map = mapClass.newInstance();
+				}catch (InstantiationException e) {
+					throw new RuntimeException(e);
+				} catch (IllegalAccessException e) {
+					throw new RuntimeException(e);
+				}
+				
+				local_map.setKeyValue(this.inputData.getMapKey(i), this.inputData.getMapValue(i));
+				
+			//	local_map.map();
+				
+				executor.execute(local_map);
+	
+				//Map関数の出力を入れる
+				okeys = local_map.getKeys();
+				ovalues = local_map.getValues();
+				for(int j = 0; j < okeys.size(); j++){
+					this.inputData.setMap(okeys.get(j), ovalues.get(j));
+				}
+				
+				//メモリ領域の解放
+				okeys = null ;
+				ovalues = null;
+				local_map = null;
 		}
 		
 		//Map処理を全て終えたらinput_data内の初期値を保存しているメモリ領域を解放
@@ -94,8 +106,7 @@ public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Compa
 	}
 	
 	void startShuffle(){
-//		this.inputData.qSort(0, this.inputData.getShuffleSize()-1);
-		this.inputData.cSort();
+//		this.inputData.cSort();
 		this.inputData.grouping();
 	}
 	

@@ -1,12 +1,16 @@
 package mapreduce;
 
 import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.*;
 
 public class InputData<InputMapKey, InputMapValue, IntermediateKey extends Comparable<IntermediateKey> , IntermediateValue>{
-	ArrayList<InputMapKey> initialKeys;
-	ArrayList<InputMapValue> initialValues;
-	ArrayList<KeyValue<IntermediateKey , IntermediateValue>> mappedKeyValue;
-	ArrayList<GroupedKeyValue<IntermediateKey, IntermediateValue>> gKVs;
+	List<InputMapKey> initialKeys;
+	List<InputMapValue> initialValues;
+	List<KeyValue<IntermediateKey , IntermediateValue>> mappedKeyValue;
+	//List<GroupedKeyValue<IntermediateKey, IntermediateValue>> gKVs;
+	ConcurrentHashMap<IntermediateKey, GroupedValues<IntermediateValue>> gKVMap;
+	List<GroupedKeyValue<IntermediateKey, IntermediateValue>> gKVList;
 	
 	
 	/*
@@ -17,7 +21,9 @@ public class InputData<InputMapKey, InputMapValue, IntermediateKey extends Compa
 		this.initialKeys = new ArrayList<InputMapKey>();
 		this.initialValues = new ArrayList<InputMapValue>();
 		this.mappedKeyValue = new ArrayList<KeyValue<IntermediateKey , IntermediateValue>>();	
-		this.gKVs = new ArrayList<GroupedKeyValue<IntermediateKey, IntermediateValue>>();
+	//	this.gKVs = new ArrayList<GroupedKeyValue<IntermediateKey, IntermediateValue>>();
+		this.gKVMap = new ConcurrentHashMap<IntermediateKey, GroupedValues<IntermediateValue>>();
+		this.gKVList = new ArrayList<GroupedKeyValue<IntermediateKey, IntermediateValue>>();
 	}
 	
 	/*
@@ -45,9 +51,36 @@ public class InputData<InputMapKey, InputMapValue, IntermediateKey extends Compa
 		return this.initialKeys.size();
 	}
 	
+	/*
 	void setMap(IntermediateKey k, IntermediateValue v){
 		this.mappedKeyValue.add(new KeyValue<IntermediateKey, IntermediateValue>(k, v));
 	}
+	
+	void setMap(IntermediateKey k, IntermediateValue v){
+		if(!this.gKVMap.containsKey(k)){
+			this.gKVMap.put(k, new GroupedValues<IntermediateValue>(v));
+		}
+		else{
+			GroupedValues<IntermediateValue> gVs = this.gKVMap.get(k);
+			gVs.add(v);
+			this.gKVMap.put(k, gVs);
+		}
+	}
+	
+	*/
+
+	void setMap(IntermediateKey k, IntermediateValue v){
+		if(this.gKVMap.putIfAbsent(k, new GroupedValues<IntermediateValue>(v)) != null){
+			GroupedValues<IntermediateValue> gv = this.gKVMap.get(k);
+			gv.add(v);
+			while(!this.gKVMap.replace(k, this.gKVMap.get(k), gv)){
+				gv = this.gKVMap.get(k);
+				gv.add(v);
+			}
+		}
+	}
+	
+	
 	
 	/*
 	 * Mapフェーズの後のkey-valueを表示
@@ -84,19 +117,14 @@ public class InputData<InputMapKey, InputMapValue, IntermediateKey extends Compa
 	void cSort(){
 		Collections.sort(this.mappedKeyValue);
 	}
-
+/*
 	void grouping(){
-		/*
-		 * group values having same key to GroupedValues Class.
-		 */
+		 //group values having same key to GroupedValues Class.
 		IntermediateKey tmpKey;
 		GroupedKeyValue<IntermediateKey, IntermediateValue> gkv;
 		
 		
-		/*
-		 * 先頭のKeyを現在のKey(con_key)として獲得しg_kvにいれる
-		 * 
-		 */
+		// 先頭のKeyを現在のKey(con_key)として獲得しg_kvにいれる
 		IntermediateKey conKey = this.mappedKeyValue.get(0).getKey();
 		gkv = new GroupedKeyValue<IntermediateKey, IntermediateValue>(conKey, new GroupedValues<IntermediateValue>(this.mappedKeyValue.get(0).getValue()));
 		
@@ -114,10 +142,15 @@ public class InputData<InputMapKey, InputMapValue, IntermediateKey extends Compa
 		}
 		this.gKVs.add(gkv);
 		
-		/*
-		 * mapped_keysとmapped_valuesのメモリを解放する
-		 */
+		 //mapped_keysとmapped_valuesのメモリを解放する
 		this.mappedKeyValue = null;
+	}
+	
+*/	
+	void grouping(){
+		for(Entry<IntermediateKey, GroupedValues<IntermediateValue>> g_kv :gKVMap.entrySet() ){
+			this.gKVList.add(new GroupedKeyValue<IntermediateKey, IntermediateValue>(g_kv.getKey(), g_kv.getValue()));
+		}
 	}
 
 	
@@ -125,9 +158,10 @@ public class InputData<InputMapKey, InputMapValue, IntermediateKey extends Compa
 	 * Shuffleでの結果を表示
 	 */
 	void showSuffle(){
-		for(GroupedKeyValue<IntermediateKey, IntermediateValue> g_kv :gKVs ){
+		//for(GroupedKeyValue<IntermediateKey, IntermediateValue> g_kv :gKVs ){
+		for(Entry<IntermediateKey, GroupedValues<IntermediateValue>> g_kv :gKVMap.entrySet() ){
 			System.out.print(g_kv.getKey().toString());
-			for(IntermediateValue value : g_kv.getValues()){
+			for(IntermediateValue value : g_kv.getValue()){
 				System.out.print("," + value.toString());
 			}
 			System.out.println("");
@@ -138,15 +172,15 @@ public class InputData<InputMapKey, InputMapValue, IntermediateKey extends Compa
  * Reduce
  */
 	IntermediateKey getReduceKey(int index){
-		return this.gKVs.get(index).getKey();
+		return this.gKVList.get(index).getKey();
 	}
 	
 	GroupedValues<IntermediateValue> getReduceValues(int index){
-		return this.gKVs.get(index).getValues();
+		return this.gKVList.get(index).getValues();
 	}
 	
 	int getReduceSize(){
-		return this.gKVs.size();
+		return this.gKVList.size();
 	}
 
 }

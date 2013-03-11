@@ -1,6 +1,6 @@
 package mapreduce;
 
-public abstract class Reducer<InputKey, InputValue, OutputKey, OutputValue>{
+public abstract class Reducer<InputKey, InputValue, OutputKey, OutputValue> implements Runnable{
 	protected InputKey ikey;
 	protected GroupedValues<InputValue> ivalues;
 	OutputKey okey;
@@ -30,4 +30,8 @@ public abstract class Reducer<InputKey, InputValue, OutputKey, OutputValue>{
 	}
 	
 	protected abstract void reduce();
+	
+	public void run(){
+		reduce();
+	}
 }

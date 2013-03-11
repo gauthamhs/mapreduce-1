@@ -5,7 +5,7 @@ import java.util.*;
 /*
  * if
  */
-public abstract class Mapper <InputKey, InputValue, OutputKey, OutputValue>{
+public abstract class Mapper <InputKey, InputValue, OutputKey, OutputValue> implements Runnable{
 	protected InputKey ikey;
 	protected InputValue ivalue;
 	ArrayList<OutputKey> okeys;
@@ -44,4 +44,8 @@ public abstract class Mapper <InputKey, InputValue, OutputKey, OutputValue>{
 	}
 
 	protected abstract void map();
+	
+	public void run(){
+		map();
+	}
 }
