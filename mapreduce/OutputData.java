@@ -1,10 +1,11 @@
 package mapreduce;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class OutputData<K, V> {
-	ArrayList<K> keys;
-	ArrayList<V> values;
+	List<K> keys;
+	List<V> values;
 	
 	OutputData(){
 		this.keys = new ArrayList<K>();
@@ -21,5 +22,14 @@ public class OutputData<K, V> {
 			System.out.println(keys.get(i).toString() + ", " + values.get(i).toString());
 		}
 	}
+	
+	List<K> getOutputKeys(){
+		return this.keys;
+	}
+	
+	List<V> getOutputValues(){
+		return this.values;
+	}
+	
 	
 }

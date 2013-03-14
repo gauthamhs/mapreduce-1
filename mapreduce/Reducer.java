@@ -15,6 +15,7 @@ public abstract class Reducer<InputKey, InputValue, OutputKey, OutputValue>{
 		this.ivalues = groupedInputValues;
 	}
 	
+
 	OutputKey getKey(){
 		return okey;
 	}
@@ -30,4 +31,6 @@ public abstract class Reducer<InputKey, InputValue, OutputKey, OutputValue>{
 	}
 	
 	protected abstract void reduce();
+	
+
 }

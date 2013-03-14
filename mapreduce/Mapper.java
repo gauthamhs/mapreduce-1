@@ -5,11 +5,11 @@ import java.util.*;
 /*
  * if
  */
-public abstract class Mapper <InputKey, InputValue, OutputKey, OutputValue>{
+public abstract class Mapper <InputKey, InputValue, OutputKey, OutputValue> {
 	protected InputKey ikey;
 	protected InputValue ivalue;
-	ArrayList<OutputKey> okeys;
-	ArrayList<OutputValue> ovalues;
+	List<OutputKey> okeys;
+	List<OutputValue> ovalues;
 	
 	
 	protected Mapper(){
@@ -27,14 +27,13 @@ public abstract class Mapper <InputKey, InputValue, OutputKey, OutputValue>{
 	void setKeyValue(InputKey key, InputValue value){
 		this.ikey = key;
 		this.ivalue = value;
-		
 	}
 	
-	ArrayList<OutputKey>  getKeys(){
+	List<OutputKey>  getKeys(){
 		return this.okeys;
 	}
 	
-	ArrayList<OutputValue>  getValues(){
+	List<OutputValue>  getValues(){
 		return this.ovalues;
 	}
 	
@@ -44,4 +43,10 @@ public abstract class Mapper <InputKey, InputValue, OutputKey, OutputValue>{
 	}
 
 	protected abstract void map();
+	
+
+	public  void run(){
+		this.map();
+	}
+
 }

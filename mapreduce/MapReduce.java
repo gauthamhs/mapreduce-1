@@ -1,14 +1,15 @@
 package mapreduce;
 
 import java.util.*;
+import java.util.concurrent.*;
 
-public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Comparable<IntermediateKey >, IntermediateValue, OutputReduceKey, OutputReduceValue>{
+public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapValue, IntermediateKey extends Comparable<IntermediateKey> , IntermediateValue, OutputReduceKey, OutputReduceValue>{
 	
-	Class<? extends Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> mapClass;
-	Class<? extends Reducer< IntermediateKey, IntermediateValue, OutputReduceKey, OutputReduceValue>> reduceClass;
+	private Class<? extends Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> mapClass;
+	private Class<? extends Reducer< IntermediateKey, IntermediateValue, OutputReduceKey, OutputReduceValue>> reduceClass;
 	
-	InputData<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue> inputData;
-	OutputData<OutputReduceKey, OutputReduceValue> outputData;
+	private InputData<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue> inputData;
+	private OutputData<OutputReduceKey, OutputReduceValue> outputData;
 	
 	/*
 	 * phase_mp変数でどのフェーズまで実行するかを見極める
@@ -18,27 +19,36 @@ public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Compa
 	 * それ以外の値であれば"MAP_REDUCE"として扱う
 	 */
 	
-	String phaseMR;
+	private String phaseMR;
+
+	//
+	private boolean resultOutput;
 	
-	/*
-	 * result_outputはフェーズごとの結果の出力のon/offについて定義する
-	 * 
-	 * 
-	 */
-	boolean resultOutput;
+	//The Number of concurrent threads
+	private int parallelThreadNum;
+	
 
 	
-	public MapReduce(Class<? extends Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> map_class, Class<? extends  Reducer< IntermediateKey, IntermediateValue, OutputReduceKey, OutputReduceValue>> reduce_class, String phase_mp){
+	public MapReduce(
+			Class<? extends Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> map_class, 
+			Class<? extends  Reducer< IntermediateKey, IntermediateValue, OutputReduceKey, OutputReduceValue>> reduce_class, 
+			String phase_mp
+			){
 		this.mapClass = map_class;
 		this.reduceClass = reduce_class;
 		this.inputData = new InputData<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>();
 		this.outputData = new OutputData<OutputReduceKey, OutputReduceValue>();
 		this.phaseMR = phase_mp;
 		this.resultOutput = true;
+		this.parallelThreadNum = 1;
 	}
 	
 	public void setResultOutput(boolean resultOutput){
 		this.resultOutput = resultOutput;
+	}
+	
+	public void setParallelThreadNum(int num){
+		this.parallelThreadNum = num;
 	}
 	
 	
@@ -54,90 +64,211 @@ public class MapReduce<InputMapKey, InputMapValue, IntermediateKey extends Compa
 	/*
 	 * Map関数を実行する
 	 * 各Key-Valueに対し以下の処理を行う
-	 * 1.Mapperインスタンスの生成
-	 * 2.Mapperインスタンスに
-	 * 
+	 * 1.Mapperインスタンス生成
+	 * 2.1.のインスタンスを使ってFutureTaskインスタンスの生成
+	 * 3.MapWorkメソッドで並列に実行し結果をinputDataに格納
+	 * 4.1.-3.を繰り返し行う
 	 */
 	void startMap(){
-		Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue> local_map;
-		ArrayList<IntermediateKey> okeys;
-		ArrayList<IntermediateValue> ovalues;
+		List<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> mappers =  new ArrayList<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>(this.parallelThreadNum);
+		List<FutureTask<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>> maptasks = new ArrayList<FutureTask<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>>(this.parallelThreadNum);
+		ExecutorService executor = Executors.newFixedThreadPool(this.parallelThreadNum);
 		
-		for(int i = 0; i < this.inputData.getMapSize(); i ++){
+		
+		for(int i = 0; i < this.parallelThreadNum; i ++){
+			mappers.add(initializeMapper());
+			maptasks.add(new FutureTask<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>(new MapCallable<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>()));
+		}
+			
+		int x = this.inputData.getMapSize() / this.parallelThreadNum;
+		for(int i = 0; i < this.inputData.getMapSize() / this.parallelThreadNum; i++){
+			for(int j = 0; j < this.parallelThreadNum; j++){
+				mappers.set(j, initializeMapper());
+				mappers.get(j).setKeyValue(this.inputData.getMapKey(i+j*x), this.inputData.getMapValue(i+j*x));
+				maptasks.set(j, new FutureTask<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>(new MapCallable<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>(mappers.get(j))));
+			}
+			
 			try{
-				local_map = mapClass.newInstance();
-			}catch (InstantiationException e) {
-				throw new RuntimeException(e);
-			} catch (IllegalAccessException e) {
-				throw new RuntimeException(e);
+				MapWork(mappers, maptasks, executor);
+			}catch(OutOfMemoryError e){
+				System.out.println(i);
+				System.exit(1);
+			}
+		} 
+				
+		
+		if(this.inputData.getMapSize() % this.parallelThreadNum != 0){
+			int finishedsize = (this.inputData.getMapSize() / this.parallelThreadNum) * this.parallelThreadNum;
+			for(int i = 0; i < this.inputData.getMapSize() % this.parallelThreadNum; i++){
+				mappers.set(i, initializeMapper());
+				mappers.get(i).setKeyValue(this.inputData.getMapKey(finishedsize + i), this.inputData.getMapValue(finishedsize + i));
+				maptasks.set(i, new FutureTask<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>(new MapCallable<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>(mappers.get(i))));
 			}
 			
-			local_map.setKeyValue(this.inputData.getMapKey(i), this.inputData.getMapValue(i));
-			
-			local_map.map();
-
-			//Map関数の出力を入れる
-			okeys = local_map.getKeys();
-			ovalues = local_map.getValues();
-			for(int j = 0; j < okeys.size(); j++){
-				this.inputData.setMap(okeys.get(j), ovalues.get(j));
-			}
-			
-			//メモリ領域の解放
-			okeys = null ;
-			ovalues = null;
-			local_map = null;
+			MapWork(mappers, maptasks, executor);
 		}
 		
+		mappers = null;
+		maptasks = null;
 		//Map処理を全て終えたらinput_data内の初期値を保存しているメモリ領域を解放
 		this.inputData.initialRelease();
+		executor.shutdown();
 	}
 	
+	void MapWork(
+			List<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> mappers,
+			List<FutureTask<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>> maptasks,
+			ExecutorService executor
+			){
+
+		for(int i = 0; i < this.parallelThreadNum; i++){
+			executor.submit(maptasks.get(i));
+		}
+					
+		//Map関数の出力を入れる				
+		try{
+			for(int i = 0; i < this.parallelThreadNum; i++){
+			List<IntermediateKey> resultMapKeys = maptasks.get(i).get().getKeys();
+			List<IntermediateValue> resultMapValues = maptasks.get(i).get().getValues();
+			for(int j = 0; j < resultMapKeys.size(); j++)
+				this.inputData.setMap(resultMapKeys.get(j), resultMapValues.get(j));
+			}
+		}catch(InterruptedException e){
+			e.getCause().printStackTrace();
+		}catch(ExecutionException e){
+			e.getCause().printStackTrace();
+		}
+	}
+	
+	
+	Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue> initializeMapper(){
+		try{
+			return mapClass.newInstance();
+		}catch (InstantiationException e) {
+			throw new RuntimeException(e);
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
+	/*
+	*ReducePhases
+	*1.Map関数の結果であるKey-ValueをKeyを基準にソート
+	*2.ソートした順に同じKeyのKey-Valueをグループ化する	
+	*/
 	void startShuffle(){
-//		this.inputData.qSort(0, this.inputData.getShuffleSize()-1);
 		this.inputData.cSort();
 		this.inputData.grouping();
 	}
+		
 	
+	
+	/*
+	 * Reduce関数を実行する
+	 * 各Key-Valueに対し以下の処理を行う
+	 * 1.Reducerインスタンス生成
+	 * 2.1.のインスタンスを使ってFutureTaskインスタンスの生成
+	 * 3.ReduceWorkメソッドで並列に実行し結果をoutputDataに格納
+	 * 4.1.-3.を繰り返し行う
+	 */
 	void startReduce(){
-		Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue> local_reduce;
-		for(int i = 0; i < this.inputData.getReduceSize(); i ++){
-			try{
-				local_reduce = reduceClass.newInstance();
-			}catch (InstantiationException e) {
-				throw new RuntimeException(e);
-			} catch (IllegalAccessException e) {
-				throw new RuntimeException(e);
+		List<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>> reducers =  new ArrayList<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>(this.parallelThreadNum);
+		List<FutureTask<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>> reducetasks = new ArrayList<FutureTask<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>>(this.parallelThreadNum);
+		ExecutorService executor = Executors.newFixedThreadPool(this.parallelThreadNum);				
+		
+		for(int i = 0; i < this.parallelThreadNum; i ++){
+			reducers.add(initializeReducer());
+			reducetasks.add(new FutureTask<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>(new ReduceCallable<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>()));
+		}
+		
+		int x = this.inputData.getReduceSize() / this.parallelThreadNum;
+		for(int i = 0; i < this.inputData.getReduceSize() / this.parallelThreadNum; i++){
+			for(int j = 0; j < this.parallelThreadNum; j++){
+				reducers.set(j, initializeReducer());
+				reducers.get(j).setKeyValue(this.inputData.getReduceKey(i+j*x), this.inputData.getReduceValues(i+j*x));
+				reducetasks.set(j, new FutureTask<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>(new ReduceCallable<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>(reducers.get(j))));
 			}
 			
-			local_reduce.setKeyValue(this.inputData.getReduceKey(i), this.inputData.getReduceValues(i));
-			local_reduce.reduce();
-			this.outputData.setKeyValue(local_reduce.getKey(), local_reduce.getValue());
+			ReduceWork(reducers, reducetasks, executor);
 		}
-		//メモリ領域解放
-		inputData = null;
+		
+
+		if(this.inputData.getReduceSize() % this.parallelThreadNum != 0){
+			int finishedsize = (this.inputData.getReduceSize() / this.parallelThreadNum) * this.parallelThreadNum;
+			for(int i = 0; i < this.inputData.getReduceSize() % this.parallelThreadNum; i++){
+				reducers.set(i, initializeReducer());
+				reducers.get(i).setKeyValue(this.inputData.getReduceKey(finishedsize + i), this.inputData.getReduceValues(finishedsize + i));
+				reducetasks.set(i, new FutureTask<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>(new ReduceCallable<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>(reducers.get(i))));			}
+			
+			ReduceWork(reducers, reducetasks, executor);
+		}
+		
+		reducers = null;
+		reducetasks = null;
+		executor.shutdown();
 	}
+	
+	void ReduceWork(
+			List<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>> reducers,
+			List<FutureTask<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>> reducetasks,
+			ExecutorService executor
+			){
+		
+		
+		for(int i = 0; i < this.parallelThreadNum; i++){
+			executor.submit(reducetasks.get(i));
+		}
+						
+		//Map関数の出力を入れる	
+		try{
+			for(int j = 0; j < this.parallelThreadNum; j++){
+				OutputReduceKey resultMapKey = reducetasks.get(j).get().getKey();
+				OutputReduceValue resultMapValue = reducetasks.get(j).get().getValue();
+				this.outputData.setKeyValue(resultMapKey, resultMapValue);
+			}
+		}catch(InterruptedException e){
+			e.getCause().printStackTrace();
+		}catch(ExecutionException e){
+			e.getCause().printStackTrace();
+		}
+	}
+	
+	Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue> initializeReducer(){
+		try{
+			return reduceClass.newInstance();
+		}catch (InstantiationException e) {
+			throw new RuntimeException(e);
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
 	
 	public void run(){
 		startMap();
 		if(this.phaseMR.equals("MAP_ONLY")){
 			if(this.resultOutput)
 				inputData.showMap();
-			return;
+			System.exit(0);
 		}
 
 		startShuffle();
 		if(this.phaseMR.equals("MAP_SHUFFLE")){
 			if(this.resultOutput)
 				inputData.showSuffle();
-			return;
+			System.exit(0);
 		}
-		System.out.println("Reduce Phase is finished.");
 		startReduce();
 		if(this.resultOutput)
 			outputData.reduceShow();
 	}
 	
+	List<OutputReduceKey> getKeys(){
+		return this.outputData.getOutputKeys();
+	}
 	
+	List<OutputReduceValue> getValues(){
+		return this.outputData.getOutputValues();
+	}	
 }
 

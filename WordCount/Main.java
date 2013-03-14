@@ -25,11 +25,11 @@ public class Main {
 			filename = args[2];
 		}
 		else{
-			filename = "/Users/saitoutakafumi/Dropbox/workspace/mapreduce_java/src/mapreduce/mapreduce/MapReduce.java";
+			filename = "";
 		}
 			
-		MapReduce<Integer, String, String, Integer, String, Integer> wcMR = new MapReduce(MapWC.class, ReduceWC.class, "MAP_REDUCE");
-
+		MapReduce<Integer, String, String, Integer, String, Integer> wcMR = new MapReduce<Integer, String, String, Integer, String, Integer>(MapWC.class, ReduceWC.class, "MAP_REDUCE");
+		wcMR.setParallelThreadNum(6);
 		
 		//初期値をMapReduceに渡す
 		try{
@@ -40,7 +40,7 @@ public class Main {
 				wcMR.addKeyValue(0 , s);
 			}
 		}catch(Exception e){
-			System.out.println("ファイル読み込み失敗");
+			System.err.println("ファイル読み込み失敗");
 	    }
 		
 		wcMR.run();				
