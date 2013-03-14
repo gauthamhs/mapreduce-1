@@ -5,11 +5,11 @@ import java.util.concurrent.*;
 
 public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapValue, IntermediateKey extends Comparable<IntermediateKey> , IntermediateValue, OutputReduceKey, OutputReduceValue>{
 	
-	Class<? extends Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> mapClass;
-	Class<? extends Reducer< IntermediateKey, IntermediateValue, OutputReduceKey, OutputReduceValue>> reduceClass;
+	private Class<? extends Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> mapClass;
+	private Class<? extends Reducer< IntermediateKey, IntermediateValue, OutputReduceKey, OutputReduceValue>> reduceClass;
 	
-	InputData<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue> inputData;
-	OutputData<OutputReduceKey, OutputReduceValue> outputData;
+	private InputData<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue> inputData;
+	private OutputData<OutputReduceKey, OutputReduceValue> outputData;
 	
 	/*
 	 * phase_mp変数でどのフェーズまで実行するかを見極める
@@ -19,13 +19,13 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 	 * それ以外の値であれば"MAP_REDUCE"として扱う
 	 */
 	
-	String phaseMR;
+	private String phaseMR;
 
 	//
-	boolean resultOutput;
+	private boolean resultOutput;
 	
 	//The Number of concurrent threads
-	int parallelThreadNum;
+	private int parallelThreadNum;
 	
 
 	
@@ -249,15 +249,14 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 		if(this.phaseMR.equals("MAP_ONLY")){
 			if(this.resultOutput)
 				inputData.showMap();
-			
-			return;
+			System.exit(0);
 		}
 
 		startShuffle();
 		if(this.phaseMR.equals("MAP_SHUFFLE")){
 			if(this.resultOutput)
 				inputData.showSuffle();
-			return;
+			System.exit(0);
 		}
 		startReduce();
 		if(this.resultOutput)
