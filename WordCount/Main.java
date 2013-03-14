@@ -25,11 +25,11 @@ public class Main {
 			filename = args[2];
 		}
 		else{
-			filename = "/Users/saitoutakafumi/Dropbox/workspace/mapreduce_java/WordCount/Main.java";
+			filename = "";
 		}
 			
-		MapReduce<Integer, String, String, Integer, String, Integer> wcMR = new MapReduce(MapWC.class, ReduceWC.class, "MAP_REDUCE");
-
+		MapReduce<Integer, String, String, Integer, String, Integer> wcMR = new MapReduce<Integer, String, String, Integer, String, Integer>(MapWC.class, ReduceWC.class, "MAP_REDUCE");
+		wcMR.setParallelThreadNum(6);
 		
 		//‰Šú’l‚ğMapReduce‚É“n‚·
 		try{

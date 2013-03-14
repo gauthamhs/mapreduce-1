@@ -1,7 +1,5 @@
 package MatrixMul;
 
-import java.util.Map;
-
 import mapreduce.*;
 
 public class ReduceMM extends Reducer< Integer, Double, Integer, Double>{

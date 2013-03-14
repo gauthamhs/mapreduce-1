@@ -13,21 +13,21 @@ public class Main {
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		int matrix_size = 200;
+		int matrix_size = 128;
 		double[][] matrixA;
 		double[][] matrixB;
-		double[][] matrixC;
-		
-
+		int parallelNum = 1;
 		
 		if(args.length > 0){
 			matrix_size = new Integer(args[0]).intValue();
+		}
+		if(args.length > 1){
+			parallelNum = new Integer(args[1]).intValue();
 		}
 		
 		System.out.println("matrix size = " + String.valueOf(matrix_size));
 		matrixA = new double[matrix_size][matrix_size];
 		matrixB = new double[matrix_size][matrix_size];
-		matrixC = new double[matrix_size][matrix_size];
 		
 		init(matrixA);
 		try{
@@ -46,19 +46,14 @@ public class Main {
 		/*
 		 * MapReduce
 		 */
-//		show(matrixA);
-//		show(matrixB);
+	//	show(matrixA);
+	//	show(matrixB);
 		
-		MapReduce<Integer, double[], Integer, Double, Integer, Double> mmMR = new MapReduce(MapMM.class, ReduceMM.class, "MAP_REDUCE");
+		MapReduce<Integer, double[], Integer, Double, Integer, Double> mmMR = new MapReduce<Integer, double[], Integer, Double, Integer, Double>(MapMM.class, ReduceMM.class, "MAP_REDUCE");
 		mmMR.setResultOutput(false);
-		mmMR.setParallelThreadNum(2);
+		mmMR.setParallelThreadNum(parallelNum);
 		
-		/*
-		 * ijV
-		 * matrixCÇÃ(i, j)ÇãÅÇﬂÇÈà◊Ç…ïKóvÇ»íl
-		 */
 		
-		//double[] ijV = new double[2];
 		for(int i = 0; i < matrix_size; i++){
 			for(int j = 0; j < matrix_size; j++){
 				for(int k = 0; k < matrix_size; k++){
@@ -79,6 +74,7 @@ public class Main {
 		System.out.println("MatrixMul time is " + String.valueOf((double)(stop - start) / 1000000000));
 
 	}
+	
 	
 	public static void init(double[][] matrix){
 		Date d = new Date();
