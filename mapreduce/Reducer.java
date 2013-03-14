@@ -1,6 +1,6 @@
 package mapreduce;
 
-public abstract class Reducer<InputKey, InputValue, OutputKey, OutputValue> implements Runnable{
+public abstract class Reducer<InputKey, InputValue, OutputKey, OutputValue>{
 	protected InputKey ikey;
 	protected GroupedValues<InputValue> ivalues;
 	OutputKey okey;
@@ -15,6 +15,7 @@ public abstract class Reducer<InputKey, InputValue, OutputKey, OutputValue> impl
 		this.ivalues = groupedInputValues;
 	}
 	
+
 	OutputKey getKey(){
 		return okey;
 	}
@@ -31,7 +32,5 @@ public abstract class Reducer<InputKey, InputValue, OutputKey, OutputValue> impl
 	
 	protected abstract void reduce();
 	
-	public void run(){
-		reduce();
-	}
+
 }

@@ -1,8 +1,6 @@
 package mapreduce;
 
-import java.util.*;
-
-public class KeyValue<K extends Comparable<K>, V> implements Comparable<KeyValue>{
+public class KeyValue<K extends Comparable<K>, V> implements Comparable<KeyValue<K, V>>{
 	K key;
 	V value;
 	
@@ -20,11 +18,9 @@ public class KeyValue<K extends Comparable<K>, V> implements Comparable<KeyValue
 	}
 
 	@Override
-	public int compareTo(KeyValue otherkv) {
+	public int compareTo(KeyValue<K, V> otherkv) {
 		// TODO Auto-generated method stub		
 		K otherkey = (K) otherkv.getKey();
 		return 	this.key.compareTo(otherkey);
 	}
-
-
 }
