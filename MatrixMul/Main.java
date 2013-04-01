@@ -7,27 +7,25 @@ import mapreduce.MapReduce;
 public class Main {
 
 	/**
-	 * @param args
+	 * @param args 第一引数に行列の長さ、第二引数に並列数をそれぞれ格納する配列
 	 */
-	
-	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		int matrix_size = 128;
+		int matrixSize = 128;
 		double[][] matrixA;
 		double[][] matrixB;
 		int parallelNum = 1;
 		
 		if(args.length > 0){
-			matrix_size = new Integer(args[0]).intValue();
+			matrixSize = new Integer(args[0]).intValue();
 		}
 		if(args.length > 1){
 			parallelNum = new Integer(args[1]).intValue();
 		}
 		
-		System.out.println("matrix size = " + String.valueOf(matrix_size));
-		matrixA = new double[matrix_size][matrix_size];
-		matrixB = new double[matrix_size][matrix_size];
+		System.out.println("matrix size = " + String.valueOf(matrixSize));
+		matrixA = new double[matrixSize][matrixSize];
+		matrixB = new double[matrixSize][matrixSize];
 		
 		init(matrixA);
 		try{
@@ -37,15 +35,6 @@ public class Main {
 			}
 		init(matrixB);
 		
-		/*
-		 * Bを転置させる。
-		 */
-		
-		//rotate(matrixB);
-		
-		/*
-		 * MapReduce
-		 */
 	//	show(matrixA);
 	//	show(matrixB);
 		
@@ -54,11 +43,11 @@ public class Main {
 		mmMR.setParallelThreadNum(parallelNum);
 		
 		
-		for(int i = 0; i < matrix_size; i++){
-			for(int j = 0; j < matrix_size; j++){
-				for(int k = 0; k < matrix_size; k++){
+		for(int i = 0; i < matrixSize; i++){
+			for(int j = 0; j < matrixSize; j++){
+				for(int k = 0; k < matrixSize; k++){
 					double[] ijV = {matrixA[i][k], matrixB[k][j]};
-					mmMR.addKeyValue(i*matrix_size+j, ijV);
+					mmMR.addKeyValue(i*matrixSize+j, ijV);
 				}
 			}
 		}
@@ -76,6 +65,10 @@ public class Main {
 	}
 	
 	
+	/**
+	 * 行列にランダムな配列を格納し初期化するメソッド
+	 * @param matrix 行列
+	 */
 	public static void init(double[][] matrix){
 		Date d = new Date();
 		Random rdm = new Random(d.getTime());
@@ -88,6 +81,10 @@ public class Main {
 		}
 	}
 	
+	/**
+	 * 行列を回転するためのメソッド
+	 * @param matrix 行列
+	 */
 	public static void rotate(double[][] matrix){
 		double tmp;
 		for(int i = 0; i < matrix.length; i ++){
@@ -99,6 +96,10 @@ public class Main {
 		}
 	}
 	
+	/**
+	 * 行列を表示するメソッド
+	 * @param matrix 行列
+	 */
 	public static void show(double[][] matrix){
 		for(int i = 0; i < matrix.length; i ++){
 			for(int j = 0; j < matrix.length; j++){

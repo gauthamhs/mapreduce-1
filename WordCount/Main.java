@@ -6,20 +6,14 @@ import java.io.*;
 public class Main {
 
 	/**
-	 * @param args
+	 * WordCount
+	 * 引数で与えられたファイル中に出てくる単語の数を数える
+	 * 引数でファイルが与えられない場合はこのソースコード中の単語数をカウントする
+	 * @param args 第一引数にファイルのパスを格納するための配列
 	 */
 	
-	/*
-	 * WordCount
-	 * 引数で与えられたファイル中に出てくる文字の数を数える
-	 * 引数でファイルが与えられない場合はこのソースコード中の文字数をカウントする
-	 */
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		/*
-		 * wordcountを行うファイルの指定
-		 * ファイルが無い場合はこのソースコードに対しwordcountを行う
-		 */
 		String filename;
 		if(args.length > 1){
 			filename = args[2];

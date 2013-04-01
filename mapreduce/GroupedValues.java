@@ -2,6 +2,13 @@ package mapreduce;
 
 import java.util.*;
 
+/**
+ * 
+ * @author Saito Takafumi
+ *
+ * Suffle処理後にバリューをまとめるためのクラス
+ * @param <V> Reduceフェーズの入力となるバリューのクラス
+ */
 public class GroupedValues<V> implements Iterable<V> , Iterator<V> {
 	ArrayList<V> gValues;
 	int index;
@@ -20,6 +27,10 @@ public class GroupedValues<V> implements Iterable<V> , Iterator<V> {
 	void add(V v){
 		gValues.add(v);
 		index++;
+	}
+	
+	public int getSize(){
+		return this.gValues.size();
 	}
 	
 	boolean hasValue(){

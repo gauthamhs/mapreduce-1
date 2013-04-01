@@ -1,5 +1,13 @@
 package mapreduce;
 
+
+/**
+ * 
+ * @author takafumi
+ * キーとバリューの組を表すクラス
+ * @param <K> キーのクラス
+ * @param <V> バリューのクラス
+ */
 public class KeyValue<K extends Comparable<K>, V> implements Comparable<KeyValue<K, V>>{
 	K key;
 	V value;
@@ -16,6 +24,7 @@ public class KeyValue<K extends Comparable<K>, V> implements Comparable<KeyValue
 	V getValue(){
 		return this.value;
 	}
+	
 
 	@Override
 	public int compareTo(KeyValue<K, V> otherkv) {

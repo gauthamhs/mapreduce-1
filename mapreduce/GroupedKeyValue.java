@@ -1,12 +1,18 @@
 package mapreduce;
 
+/**
+ * 
+ * @author takafumi
+ * 
+ * 
+ * @param <K>
+ * @param <V>
+ */
 public class GroupedKeyValue<K, V> {
 	K key;
 	GroupedValues<V> gValues;
 
-	/*
-	 * constructor
-	 */
+	
 	GroupedKeyValue(K key){
 		this.key = key;
 		this.gValues = new GroupedValues<V>();
@@ -17,9 +23,6 @@ public class GroupedKeyValue<K, V> {
 		this.gValues = values;
 	}
 	
-	/*
-	 * methods for moving data
-	 */
 	
 	void setKey(K key){
 		this.key = key;
@@ -51,8 +54,5 @@ public class GroupedKeyValue<K, V> {
 	GroupedValues<V> getValues(){
 		return this.gValues;
 	}
-	
-	
-	
 	
 }

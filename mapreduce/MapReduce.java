@@ -43,6 +43,10 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 		this.parallelThreadNum = 1;
 	}
 	
+	public void setPhaseMR(String phaseMR){
+		this.phaseMR = phaseMR;
+	}
+	
 	public void setResultOutput(boolean resultOutput){
 		this.resultOutput = resultOutput;
 	}
@@ -69,7 +73,7 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 	 * 3.MapWorkメソッドで並列に実行し結果をinputDataに格納
 	 * 4.1.-3.を繰り返し行う
 	 */
-	void startMap(){
+	private void startMap(){
 		List<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> mappers =  new ArrayList<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>(this.parallelThreadNum);
 		List<FutureTask<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>> maptasks = new ArrayList<FutureTask<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>>(this.parallelThreadNum);
 		ExecutorService executor = Executors.newFixedThreadPool(this.parallelThreadNum);
@@ -115,7 +119,7 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 		executor.shutdown();
 	}
 	
-	void MapWork(
+	private void MapWork(
 			List<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>> mappers,
 			List<FutureTask<Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue>>> maptasks,
 			ExecutorService executor
@@ -141,6 +145,10 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 	}
 	
 	
+	/**
+	 * Mapperのサブクラスの初期化を行うメソッド
+	 * @return Mapperのサブクラス
+	 */
 	Mapper<InputMapKey, InputMapValue, IntermediateKey, IntermediateValue> initializeMapper(){
 		try{
 			return mapClass.newInstance();
@@ -151,19 +159,19 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 		}
 	}
 	
-	/*
+	/**
 	*ReducePhases
 	*1.Map関数の結果であるKey-ValueをKeyを基準にソート
 	*2.ソートした順に同じKeyのKey-Valueをグループ化する	
 	*/
-	void startShuffle(){
+	private void startShuffle(){
 		this.inputData.cSort();
 		this.inputData.grouping();
 	}
 		
 	
 	
-	/*
+	/**
 	 * Reduce関数を実行する
 	 * 各Key-Valueに対し以下の処理を行う
 	 * 1.Reducerインスタンス生成
@@ -171,7 +179,7 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 	 * 3.ReduceWorkメソッドで並列に実行し結果をoutputDataに格納
 	 * 4.1.-3.を繰り返し行う
 	 */
-	void startReduce(){
+	private void startReduce(){
 		List<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>> reducers =  new ArrayList<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>(this.parallelThreadNum);
 		List<FutureTask<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>> reducetasks = new ArrayList<FutureTask<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>>(this.parallelThreadNum);
 		ExecutorService executor = Executors.newFixedThreadPool(this.parallelThreadNum);				
@@ -208,7 +216,13 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 		executor.shutdown();
 	}
 	
-	void ReduceWork(
+	/**
+	 * 並列にMapReduceを動かすためのメソッド
+	 * @param reducers 
+	 * @param reducetasks
+	 * @param executor
+	 */
+	private void ReduceWork(
 			List<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>> reducers,
 			List<FutureTask<Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue>>> reducetasks,
 			ExecutorService executor
@@ -219,7 +233,6 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 			executor.submit(reducetasks.get(i));
 		}
 						
-		//Map関数の出力を入れる	
 		try{
 			for(int j = 0; j < this.parallelThreadNum; j++){
 				OutputReduceKey resultMapKey = reducetasks.get(j).get().getKey();
@@ -233,6 +246,10 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 		}
 	}
 	
+	/**
+	 * Reducerのサブクラスのインスタンスを返すメソッド
+	 * @return Reducerのサブクラス
+	 */
 	Reducer<IntermediateKey, IntermediateValue,OutputReduceKey, OutputReduceValue> initializeReducer(){
 		try{
 			return reduceClass.newInstance();
@@ -244,30 +261,43 @@ public class MapReduce<InputMapKey extends Comparable<InputMapKey> , InputMapVal
 	}
 	
 	
+	/**
+	 * MapReduce処理を実行するためのメソッド
+	 */
 	public void run(){
 		startMap();
 		if(this.phaseMR.equals("MAP_ONLY")){
 			if(this.resultOutput)
 				inputData.showMap();
-			System.exit(0);
+			return;
 		}
 
 		startShuffle();
 		if(this.phaseMR.equals("MAP_SHUFFLE")){
 			if(this.resultOutput)
 				inputData.showSuffle();
-			System.exit(0);
+			return;
 		}
 		startReduce();
 		if(this.resultOutput)
 			outputData.reduceShow();
 	}
 	
-	List<OutputReduceKey> getKeys(){
+	/**
+	 * MapReduce処理後のキーを返す
+	 * getValues()で返すバリューのリストとはインデックスで対応している。
+	 * @return キーの入ったリスト
+	 */
+	public List<OutputReduceKey> getKeys(){
 		return this.outputData.getOutputKeys();
 	}
 	
-	List<OutputReduceValue> getValues(){
+	/**
+	 * MapReduce処理後のバリューを返す
+	 * getKeys()で返すキーのリストとはインデックスで対応している。
+	 * @return バリューの入ったリスト
+	 */
+	public List<OutputReduceValue> getValues(){
 		return this.outputData.getOutputValues();
 	}	
 }

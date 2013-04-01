@@ -3,6 +3,14 @@ package mapreduce;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 
+ * @author takafumi
+ *
+ * Reduceの結果を格納するためのクラス
+ * @param <K> Reduceの出力のキークラス
+ * @param <V> Reduceの出力のバリュークラス
+ */
 public class OutputData<K, V> {
 	List<K> keys;
 	List<V> values;
